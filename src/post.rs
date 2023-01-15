@@ -19,7 +19,7 @@ pub(crate) fn post_user() -> impl Filter<Extract = (impl Reply,), Error = Reject
         .and(with_json_body())
         .and_then(post_extract)
         .and_then(post_insert)
-        .and_then(create_success)
+        .and_then(post_success)
 }
 
 /// Uses the fields to create a POST query.
@@ -29,7 +29,7 @@ pub(crate) fn post_user() -> impl Filter<Extract = (impl Reply,), Error = Reject
 /// but error handling is included for that instance.
 /// 
 /// Alternatively, you could use the global's field info to avoid possible developer error!
-pub(crate) async fn post_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
+async fn post_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
     // name
     let value = req.remove("name").check()?;
     let name = match value {
@@ -103,7 +103,7 @@ pub(crate) async fn post_insert(mut req: HashMap<String, DataTypeValue>) -> Resu
 /// Extracts the data from the request body and verifies it in the process.
 /// 
 /// This function will require all required fields, so it is best used for POST requests.
-pub(crate) async fn post_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
+async fn post_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
     // The map this function will extract from the JSON body
     let mut map: HashMap<String, DataTypeValue> = HashMap::new();
 
@@ -145,8 +145,8 @@ pub(crate) async fn post_extract(body: serde_json::Value) -> Result<HashMap<Stri
     }
 }
 
-/// Replies with a success code and Create-related message.
-pub(crate) async fn create_success(user_name: String) -> Result<impl Reply, Rejection> {
+/// Replies with a success code and POST-related message.
+async fn post_success(user_name: String) -> Result<impl Reply, Rejection> {
     respond(
         Ok(format!(
             "Welcome, {}! If this was hooked up to a database, you would be added.",

@@ -16,6 +16,7 @@ mod routes;
 mod post;
 mod get;
 mod patch;
+mod delete;
 
 // Allows the database design to be used as a global.
 // This is important because Warp's closures cannot take ownership of a non-static reference to the database.

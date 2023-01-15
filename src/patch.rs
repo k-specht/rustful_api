@@ -19,7 +19,7 @@ pub(crate) fn patch_user() -> impl Filter<Extract = (impl Reply,), Error = Rejec
         .and(with_json_body())
         .and_then(patch_extract)
         .and_then(patch_insert)
-        .and_then(update_success)
+        .and_then(patch_success)
 }
 
 /// Uses the fields to create a PATCH query.
@@ -28,7 +28,7 @@ pub(crate) fn patch_user() -> impl Filter<Extract = (impl Reply,), Error = Rejec
 /// Since not all of it is included, error handling is more important here.
 /// 
 /// You could also use the global's field info to avoid possible developer error!
-pub(crate) async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
+async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
     // These are all the possible parameters that can be updated
     let mut name: Option<String> = None;
     let mut email: Option<String> = None;
@@ -129,7 +129,7 @@ pub(crate) async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Res
 /// Extracts the data from the request body and verifies it in the process.
 /// 
 /// This function has custom requirements, so it is best used for PATCH requests.
-pub(crate) async fn patch_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
+async fn patch_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
     // The map this function will extract from the JSON body
     let mut map: HashMap<String, DataTypeValue> = HashMap::new();
 
@@ -172,8 +172,8 @@ pub(crate) async fn patch_extract(body: serde_json::Value) -> Result<HashMap<Str
     }
 }
 
-/// Replies with a success code and Update-related message.
-pub(crate) async fn update_success(user_name: String) -> Result<impl Reply, Rejection> {
+/// Replies with a success code and PATCH-related message.
+async fn patch_success(user_name: String) -> Result<impl Reply, Rejection> {
     respond(
         Ok(format!(
             "Welcome, User #{}! If this was hooked up to a database, your information would be changed.",

@@ -11,24 +11,24 @@ use crate::AppError;
 use crate::routes::respond;
 use crate::routes::with_json_body;
 
-// GET <domain>/api/test/login
-/// A function that returns a warp route for logging in a user.
-pub(crate) fn get_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+// DELETE <domain>/api/test/unsubscribe
+/// A function that returns a warp route for deleting a user.
+pub(crate) fn delete_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::path!("login")
-        .and(warp::get())
+        .and(warp::delete())
         .and(with_json_body())
-        .and_then(get_extract)
-        .and_then(get_retrieve)
-        .and_then(get_success)
+        .and_then(delete_extract)
+        .and_then(delete_retrieve)
+        .and_then(delete_success)
 }
 
-/// Uses the fields to create a GET query.
+/// Uses the fields to create a DELETE query.
 /// 
 /// The `req` variable now has some of the data specified by the `FieldDesign`.
 /// Since not all of it is included, error handling is more important here.
 /// 
 /// You could also use the global's field info to avoid possible developer error!
-async fn get_retrieve(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
+async fn delete_retrieve(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
     // id
     let id = match req.remove("id") {
         Some(value) => match value {
@@ -39,15 +39,14 @@ async fn get_retrieve(mut req: HashMap<String, DataTypeValue>) -> Result<String,
             })?
         },
         None => Err(AppError {
-            err_type: ErrorType::Internal, // This would be internal since get_extract verifies id is included
-            message: format!("err: no id; the id field is required for GET requests")
+            err_type: ErrorType::BadRequest,
+            message: format!("err: no id; the id field is required for DELETE requests")
         })?
     };
 
-    // An SQL query can be made here that safely updates any verified data
-    // You could also error if nothing but the id is included
+    // An SQL query can be made here that safely deletes user data
     println!(
-        "User #{}: <SQL-retrieved stuff>",
+        "User #{} deleted",
         id
     );
 
@@ -56,9 +55,7 @@ async fn get_retrieve(mut req: HashMap<String, DataTypeValue>) -> Result<String,
 }
 
 /// Extracts the data from the request body and verifies it in the process.
-/// 
-/// This function has custom requirements, so it is best used for GET requests.
-async fn get_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
+async fn delete_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
     // The map this function will extract from the JSON body
     let mut map: HashMap<String, DataTypeValue> = HashMap::new();
 
@@ -83,7 +80,7 @@ async fn get_extract(body: serde_json::Value) -> Result<HashMap<String, DataType
             } else {
                 Err(AppError {
                     err_type: ErrorType::BadRequest,
-                    message: format!("id field is required for GET, but was not included in the request body"),
+                    message: format!("id field is required for DELETE, but was not included in the request body"),
                 })?
             }
         }
@@ -91,11 +88,11 @@ async fn get_extract(body: serde_json::Value) -> Result<HashMap<String, DataType
     Ok(map)
 }
 
-/// Replies with a success code and GET-related message.
-async fn get_success(user_id: String) -> Result<impl Reply, Rejection> {
+/// Replies with a success code and DELETE-related message.
+async fn delete_success(user_id: String) -> Result<impl Reply, Rejection> {
     respond(
         Ok(format!(
-            "Welcome, User #{}! If this was hooked up to a database, your information would be retrieved.",
+            "Goodbye, User #{}. If this was hooked up to a database, your information would be deleted.",
             user_id)
         ),
         warp::http::StatusCode::ACCEPTED

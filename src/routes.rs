@@ -6,6 +6,7 @@ use crate::AppError;
 use crate::post::post_user;
 use crate::get::get_user;
 use crate::patch::patch_user;
+use crate::delete::delete_user;
 
 /// Returns the route tree to be served.
 pub fn gen_routes() -> impl Filter<Extract=impl Reply, Error=Rejection> + Clone  {
@@ -14,6 +15,7 @@ pub fn gen_routes() -> impl Filter<Extract=impl Reply, Error=Rejection> + Clone 
         .and(post_user()) // Create
         .or(get_user()) // Read
         .or(patch_user()) // Update
+        .or(delete_user()) // Delete
 }
 
 /// Uses warp to respond to the client.
