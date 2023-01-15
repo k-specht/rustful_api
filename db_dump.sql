@@ -28,8 +28,6 @@ CREATE TABLE `user` (
   `email` varchar(45) NOT NULL,
   `registered` varchar(10) DEFAULT NULL,
   `type` enum('Admin','Mod','Basic') NOT NULL,
-  `twofa` tinyint(4) NOT NULL,
-  `friends` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`friends`)),
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`),
   UNIQUE KEY `email_unique` (`email`)
