@@ -3,14 +3,16 @@ use warp::Reply;
 use warp::Filter;
 
 use crate::AppError;
-use crate::patch::patch_user;
 use crate::post::post_user;
+use crate::get::get_user;
+use crate::patch::patch_user;
 
 /// Returns the route tree to be served.
 pub fn gen_routes() -> impl Filter<Extract=impl Reply, Error=Rejection> + Clone  {
     // <domain>/api/
     warp::path!("api" / ..)
         .and(post_user()) // Create
+        .or(get_user()) // Read
         .or(patch_user()) // Update
 }
 
@@ -25,8 +27,6 @@ pub(crate) fn respond<T: serde::Serialize>(result: Result<T, AppError>, status: 
             Err(warp::reject::custom(err))
     }
 }
-
-
 
 /// Ensures that the request contains JSON within the size limit.
 pub(crate) fn with_json_body() -> impl Filter<Extract = (serde_json::Value,), Error = Rejection> + Clone {

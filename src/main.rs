@@ -14,6 +14,7 @@ use rustract::init;
 
 mod routes;
 mod post;
+mod get;
 mod patch;
 
 // Allows the database design to be used as a global.
