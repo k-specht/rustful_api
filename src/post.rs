@@ -4,32 +4,34 @@ use warp::Reply;
 use warp::Filter;
 use rustract::types::DataTypeValue;
 
+use crate::DB_DESIGN;
 use crate::ErrorType;
 use crate::AppError;
 use crate::Check;
-use crate::routes::extract;
 use crate::routes::respond;
 use crate::routes::with_json_body;
 
-// POST <domain>/api/test/hello
+// POST <domain>/api/test/register
 /// A function that returns a warp route for adding a new user.
 pub(crate) fn post_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::path!("register")
         .and(warp::post())
         .and(with_json_body())
-        .and_then(extract)
-        .and_then(insert)
-        .and_then(say_hello)
+        .and_then(post_extract)
+        .and_then(post_insert)
+        .and_then(create_success)
 }
 
-/// Uses the fields to create some query or handle some type of custom logic.
+/// Uses the fields to create a POST query.
 /// 
 /// The `req` variable now has all the data specified by the `FieldDesign`.
-/// Nothing here can error due to previous checks during extraction, but error handling is included anyway.
-/// For cleaner code, error handling can be left out of this section.
-pub(crate) async fn insert(req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
+/// Nothing in this section will error unless the developer uses the wrong type here,
+/// but error handling is included for that instance.
+/// 
+/// Alternatively, you could use the global's field info to avoid possible developer error!
+pub(crate) async fn post_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
     // name
-    let value = req.get("name").check()?;
+    let value = req.remove("name").check()?;
     let name = match value {
         DataTypeValue::String(data) => data,
         _ => Err(AppError {
@@ -39,7 +41,7 @@ pub(crate) async fn insert(req: HashMap<String, DataTypeValue>) -> Result<String
     };
 
     // email
-    let value = req.get("email").check()?;
+    let value = req.remove("email").check()?;
     let email = match value {
         DataTypeValue::String(data) => data,
         _ => Err(AppError {
@@ -49,7 +51,7 @@ pub(crate) async fn insert(req: HashMap<String, DataTypeValue>) -> Result<String
     };
 
     // registered
-    let value = req.get("registered").check()?;
+    let value = req.remove("registered").check()?;
     let registered = match value {
         DataTypeValue::String(data) => data,
         _ => Err(AppError {
@@ -59,7 +61,7 @@ pub(crate) async fn insert(req: HashMap<String, DataTypeValue>) -> Result<String
     };
 
     // type
-    let value = req.get("type").check()?;
+    let value = req.remove("type").check()?;
     let type_field = match value {
         DataTypeValue::Enum(data) => data,
         _ => return Err(AppError {
@@ -69,7 +71,7 @@ pub(crate) async fn insert(req: HashMap<String, DataTypeValue>) -> Result<String
     };
 
     // twofa
-    let value = req.get("twofa").check()?;
+    let value = req.remove("twofa").check()?;
     let twofa= match value {
         DataTypeValue::Byte(data) => data,
         _ => return Err(AppError {
@@ -79,7 +81,7 @@ pub(crate) async fn insert(req: HashMap<String, DataTypeValue>) -> Result<String
     };
 
     // friends
-    let value = req.get("friends").check()?;
+    let value = req.remove("friends").check()?;
     let friends = match value {
         DataTypeValue::Byte(data) => data,
         _ => return Err(AppError {
@@ -98,8 +100,53 @@ pub(crate) async fn insert(req: HashMap<String, DataTypeValue>) -> Result<String
     Ok(name.to_string())
 }
 
-/// Creates a hello response for warp to reply with.
-pub(crate) async fn say_hello(user_name: String) -> Result<impl Reply, Rejection> {
+/// Extracts the data from the request body and verifies it in the process.
+/// 
+/// This function will require all required fields, so it is best used for POST requests.
+pub(crate) async fn post_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
+    // The map this function will extract from the JSON body
+    let mut map: HashMap<String, DataTypeValue> = HashMap::new();
+
+    // Checks to make sure the data exists/is structured properly
+    if let Some(data_map) = body.as_object() {
+        for key in DB_DESIGN.table("user").check()?.fields.keys() {
+            let field = DB_DESIGN
+                .table("user").check()?
+                .field(key).check()?;
+
+            if let Some(data) = data_map.get(&field.field_design_title) {
+                match field.extract(data) {
+                    Ok(data_value) => {
+                        map.insert(
+                            field.field_design_title.to_string(),
+                            data_value
+                        );
+                    },
+                    Err(error) => {
+                        Err(AppError {
+                            err_type: ErrorType::BadRequest,
+                            message: format!("field {} is not formatted properly: {}", &field.field_design_title, error.to_string())
+                        })?
+                    }
+                }
+            } else if field.required && !field.generated {
+                Err(AppError {
+                    err_type: ErrorType::BadRequest,
+                    message: format!("field {} is listed as required, but was not included in the request body", &field.field_design_title),
+                })?
+            }
+        }
+        Ok(map)
+    } else {
+        Err(AppError {
+            err_type: ErrorType::BadRequest,
+            message: format!("failed to parse JSON as object, JSON: \"{}\" (err: body should be a map)", body.to_string()),
+        })?
+    }
+}
+
+/// Replies with a success code and Create-related message.
+pub(crate) async fn create_success(user_name: String) -> Result<impl Reply, Rejection> {
     respond(
         Ok(format!(
             "Welcome, {}! If this was hooked up to a database, you would be added.",
