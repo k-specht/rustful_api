@@ -70,30 +70,10 @@ async fn post_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, 
         })?
     };
 
-    // twofa
-    let value = req.remove("twofa").check()?;
-    let twofa= match value {
-        DataTypeValue::Byte(data) => data,
-        _ => return Err(AppError {
-            err_type: ErrorType::Internal,
-            message: format!("err: wrong type; expected Byte, found other; JSON: \"{}\"", value)
-        })?
-    };
-
-    // friends
-    let value = req.remove("friends").check()?;
-    let friends = match value {
-        DataTypeValue::Byte(data) => data,
-        _ => return Err(AppError {
-            err_type: ErrorType::Internal,
-            message: format!("err: wrong type; expected Byte, found other; JSON: \"{}\"", value)
-        })?
-    };
-
     // An SQL query can be made here that safely inserts the verified data
     print!(
-        "Found User: {{ name: {}, email: {}, registered: {}, type: {}, twofa: {}, friends: {} }}",
-        name, email, registered, type_field, twofa, friends
+        "Found User: {{ name: {}, email: {}, registered: {}, type: {} }}",
+        name, email, registered, type_field
     );
 
     // The name is passed on for the hello world filter to consume

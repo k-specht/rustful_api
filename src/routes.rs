@@ -11,11 +11,11 @@ use crate::delete::delete_user;
 /// Returns the route tree to be served.
 pub fn gen_routes() -> impl Filter<Extract=impl Reply, Error=Rejection> + Clone  {
     // <domain>/api/
-    warp::path!("api" / ..)
-        .and(post_user()) // Create
-        .or(get_user()) // Read
-        .or(patch_user()) // Update
-        .or(delete_user()) // Delete
+    let api = warp::path!("api" / ..);
+    api.and(post_user()) // Create
+        .or(api.and(get_user())) // Read
+        .or(api.and(patch_user())) // Update
+        .or(api.and(delete_user())) // Delete
 }
 
 /// Uses warp to respond to the client.
