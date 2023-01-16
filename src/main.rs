@@ -33,7 +33,7 @@ lazy_static! {
 /// or use external crates instead.
 /// 
 /// Currently, database-related information is stored in DB_DESIGN's config.
-/// TODO: Update rustract to support .env-stored data.
+/// TODO: #1 Update rustract to support .env-stored data.
 #[derive(serde::Serialize, serde::Deserialize)]
 struct DotEnv {
     port: u16,
@@ -41,7 +41,7 @@ struct DotEnv {
 
 /// Entry point into the server.
 /// 
-/// TODO: Improve dotenv loading after adding support to rustract.
+/// TODO: #2 Improve dotenv loading after adding support to rustract.
 #[tokio::main]
 async fn main() {
     let dotenv = load_env("./.env").await.expect("config file should load");
