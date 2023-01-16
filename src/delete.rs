@@ -14,7 +14,7 @@ use crate::routes::with_json_body;
 // DELETE <domain>/api/test/unsubscribe
 /// A function that returns a warp route for deleting a user.
 pub(crate) fn delete_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path!("login")
+    warp::path!("unsubscribe")
         .and(warp::delete())
         .and(with_json_body())
         .and_then(delete_extract)
