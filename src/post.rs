@@ -11,10 +11,10 @@ use crate::Check;
 use crate::routes::respond;
 use crate::routes::with_json_body;
 
-// POST <domain>/api/test/register
+// POST <domain>/api
 /// A function that returns a warp route for adding a new user.
 pub(crate) fn post_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path!("register")
+    warp::path!("")
         .and(warp::post())
         .and(with_json_body())
         .and_then(post_extract)
@@ -51,14 +51,16 @@ async fn post_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, 
     };
 
     // registered
-    let value = req.remove("registered").check()?;
-    let registered = match value {
-        DataTypeValue::String(data) => data,
-        _ => Err(AppError {
-                err_type: ErrorType::Internal,
-                message: format!("err: wrong type; expected String, found other; JSON: \"{}\"", value),
-            })?
-    };
+    let value = req.remove("registered");
+    let registered: Option<String> = if let Some(value) = value {
+            match value {
+                DataTypeValue::String(data) => Some(data),
+                _ => Err(AppError {
+                        err_type: ErrorType::Internal,
+                        message: format!("err: wrong type; expected String, found other; JSON: \"{}\"", value),
+                    })?
+            }
+    } else { None };
 
     // type
     let value = req.remove("type").check()?;
@@ -71,9 +73,12 @@ async fn post_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, 
     };
 
     // An SQL query can be made here that safely inserts the verified data
-    print!(
-        "Found User: {{ name: {}, email: {}, registered: {}, type: {} }}",
-        name, email, registered, type_field
+    let mut output = format!("Found User: {{ name: {}, email: {}, ", name, email);
+    if let Some(v) = registered { output += format!("registered: {}, ", v).as_str() };
+    output += format!("type: {} }}", type_field).as_str();
+    println!(
+        "{}",
+        output
     );
 
     // The name is passed on for the hello world filter to consume

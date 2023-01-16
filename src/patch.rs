@@ -11,10 +11,10 @@ use crate::Check;
 use crate::routes::respond;
 use crate::routes::with_json_body;
 
-// PATCH <domain>/api/test/update
-/// A function that returns a warp route for adding a new user.
+// PATCH <domain>/api/#
+/// A function that returns a warp route for updating user info.
 pub(crate) fn patch_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path!("update")
+    warp::path!("" / u32)
         .and(warp::patch())
         .and(with_json_body())
         .and_then(patch_extract)
@@ -28,31 +28,17 @@ pub(crate) fn patch_user() -> impl Filter<Extract = (impl Reply,), Error = Rejec
 /// Since not all of it is included, error handling is more important here.
 /// 
 /// You could also use the global's field info to avoid possible developer error!
-async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String, warp::reject::Rejection> {
+async fn patch_insert(req: (u32, HashMap<String, DataTypeValue>)) -> Result<String, warp::reject::Rejection> {
     // These are all the possible parameters that can be updated
+    let id = req.0;
+    let mut body = req.1;
     let mut name: Option<String> = None;
     let mut email: Option<String> = None;
     let mut registered: Option<String> = None;
     let mut type_field: Option<u32> = None;
 
-    // id
-    // This is the only field that definitely needs to be here!
-    let id = match req.remove("id") {
-        Some(value) => match value {
-            DataTypeValue::Unsigned32(i) => i,
-            _ => Err(AppError {
-                err_type: ErrorType::Internal,
-                message: format!("err: wrong type; expected Unsigned 32-bit integer, found other; JSON: \"{}\"", value)
-            })?
-        },
-        None => Err(AppError {
-            err_type: ErrorType::BadRequest,
-            message: format!("err: no id; the id field is required for PATCH requests")
-        })?
-    };
-
     // name
-    if let Some(value) = req.remove("name") {
+    if let Some(value) = body.remove("name") {
         name = Some(match value {
             DataTypeValue::String(data) => data,
             _ => Err(AppError {
@@ -63,7 +49,7 @@ async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String,
     }
 
     // email
-    if let Some(value) = req.remove("email") {
+    if let Some(value) = body.remove("email") {
         email = Some(match value {
             DataTypeValue::String(data) => data,
             _ => Err(AppError {
@@ -74,7 +60,7 @@ async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String,
     }
 
     // registered
-    if let Some(value) = req.remove("registered") {
+    if let Some(value) = body.remove("registered") {
         registered = Some(match value {
             DataTypeValue::String(data) => data,
             _ => Err(AppError {
@@ -85,7 +71,7 @@ async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String,
     }
 
     // type
-    if let Some(value) = req.remove("type") {
+    if let Some(value) = body.remove("type") {
         type_field = Some(match value {
             DataTypeValue::Enum(data) => data,
             _ => return Err(AppError {
@@ -97,7 +83,7 @@ async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String,
 
     // An SQL query can be made here that safely updates any verified data
     // You could also error if nothing but the id is included
-    let mut query_string = "Updated User: {{ ".to_string();
+    let mut query_string = format!("Updated User: {{ id: {}, ", id);
     if let Some(value) = name {
         query_string += "name: ";
         query_string += value.as_str();
@@ -123,13 +109,13 @@ async fn patch_insert(mut req: HashMap<String, DataTypeValue>) -> Result<String,
     );
 
     // The id is passed on for the hello world filter to consume
-    Ok(id.to_string())
+    Ok(req.0.to_string())
 }
 
 /// Extracts the data from the request body and verifies it in the process.
 /// 
 /// This function has custom requirements, so it is best used for PATCH requests.
-async fn patch_extract(body: serde_json::Value) -> Result<HashMap<String, DataTypeValue>, warp::reject::Rejection> {
+async fn patch_extract(id: u32, body: serde_json::Value) -> Result<(u32, HashMap<String, DataTypeValue>), warp::reject::Rejection> {
     // The map this function will extract from the JSON body
     let mut map: HashMap<String, DataTypeValue> = HashMap::new();
 
@@ -139,6 +125,10 @@ async fn patch_extract(body: serde_json::Value) -> Result<HashMap<String, DataTy
             let field = DB_DESIGN
                 .table("user").check()?
                 .field(key).check()?;
+
+            if field.field_design_title == "id".to_string() {
+                continue;
+            }
 
             if let Some(data) = data_map.get(&field.field_design_title) {
                 match field.extract(data) {
@@ -155,15 +145,10 @@ async fn patch_extract(body: serde_json::Value) -> Result<HashMap<String, DataTy
                         })?
                     }
                 }
-            } else if field.field_design_title.as_str() == "id" {
-                Err(AppError {
-                    err_type: ErrorType::BadRequest,
-                    message: format!("id field is required for PATCH, but was not included in the request body"),
-                })?
             }
         }
 
-        Ok(map)
+        Ok((id, map))
     } else {
         Err(AppError {
             err_type: ErrorType::BadRequest,
