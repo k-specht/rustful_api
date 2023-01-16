@@ -4,10 +4,12 @@ use warp::Filter;
 
 use crate::routes::respond;
 
-// GET <domain>/api/#
+// GET <domain>/user/#
 /// A function that returns a warp route for getting user info.
+/// 
+/// Note that `warp::query` can be used for URL queries for more complicated data than `u32`.
 pub(crate) fn get_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path!("" / u32)
+    warp::path!("user" / u32)
         .and(warp::get())
         .and_then(get_retrieve)
         .and_then(get_success)

@@ -11,10 +11,10 @@ use crate::Check;
 use crate::routes::respond;
 use crate::routes::with_json_body;
 
-// PATCH <domain>/api/#
+// PATCH <domain>/user/#
 /// A function that returns a warp route for updating user info.
 pub(crate) fn patch_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path!("" / u32)
+    warp::path!("user" / u32)
         .and(warp::patch())
         .and(with_json_body())
         .and_then(patch_extract)

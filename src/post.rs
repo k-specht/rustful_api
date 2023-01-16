@@ -11,10 +11,10 @@ use crate::Check;
 use crate::routes::respond;
 use crate::routes::with_json_body;
 
-// POST <domain>/api
+// POST <domain>/user
 /// A function that returns a warp route for adding a new user.
 pub(crate) fn post_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path!("")
+    warp::path!("user")
         .and(warp::post())
         .and(with_json_body())
         .and_then(post_extract)

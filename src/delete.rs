@@ -4,10 +4,10 @@ use warp::Filter;
 
 use crate::routes::respond;
 
-// DELETE <domain>/api/#
+// DELETE <domain>/user/#
 /// A function that returns a warp route for deleting a user.
 pub(crate) fn delete_user() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::path!("" / u32)
+    warp::path!("user" / u32)
         .and(warp::delete())
         .and_then(delete_retrieve)
         .and_then(delete_success)
