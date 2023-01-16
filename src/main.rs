@@ -4,6 +4,7 @@ extern crate lazy_static;
 extern crate rustract;
 
 use warp::Filter;
+use warp::hyper::{header, Method};
 use warp::reject::Reject;
 use lazy_static::lazy_static;
 use std::convert::Infallible;
@@ -25,16 +26,54 @@ lazy_static! {
         .expect("failed to start example");
 }
 
+/// An environment config struct that stores server and database-related information.
+/// 
+/// This is not actually compatible with npm `.env` files due to being stored as JSON.
+/// To get around this, you could use a custom `.env` serde (de/)serializer,
+/// or use external crates instead.
+/// 
+/// Currently, database-related information is stored in DB_DESIGN's config.
+/// TODO: Update rustract to support .env-stored data.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct DotEnv {
+    port: u16,
+}
+
 /// Entry point into the server.
+/// 
+/// TODO: Improve dotenv loading after adding support to rustract.
 #[tokio::main]
 async fn main() {
-    start().await.expect("server stopped, exiting app");
+    let dotenv = load_env("./.env").await.expect("config file should load");
+    start(dotenv.port).await.expect("server stopped, exiting app");
+}
+
+/// Loads the dotenv or config file from the filesystem.
+async fn load_env(path: &str) -> Result<DotEnv, AppError> {
+    let source = std::fs::read_to_string(path)?;
+    let dotenv = serde_json::from_str::<DotEnv>(source.as_str())?;
+    Ok(dotenv)
 }
 
 /// Serves the warp server on localhost, port 3030.
-async fn start() -> Result<(), RustractError> {
+async fn start(port: u16) -> Result<(), RustractError> {
+    // Configure CORS to allow any origin
+    let cors = warp::cors()
+        .allow_methods(&[Method::GET, Method::POST, Method::DELETE])
+        .allow_headers(&[header::CONTENT_TYPE, header::AUTHORIZATION])
+        .allow_any_origin();
+
+    // Start the server
     println!("server started on port 3030");
-    warp::serve(routes::gen_routes().recover(handle_rejection)).run(([127, 0, 0, 1], 3030)).await;
+    warp::serve(
+        routes::gen_routes()
+            .recover(handle_rejection)
+            .with(cors)
+        )
+        .run(([127, 0, 0, 1], port))
+        .await;
+
+    // Once the thread-blocking await stops, the server has as well
     println!("server stopped");
     Ok(())
 }
@@ -75,6 +114,24 @@ impl AppError {
     /// Wraps the error for warp's reject type for code readability.
     pub fn into_warp(self) -> warp::reject::Rejection {
         warp::reject::custom(self)
+    }
+}
+
+impl From<std::io::Error> for AppError {
+    fn from(e: std::io::Error) -> Self {
+        AppError {
+            err_type: ErrorType::Internal,
+            message: e.to_string()
+        }
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(e: serde_json::Error) -> Self {
+        AppError {
+            err_type: ErrorType::Internal,
+            message: e.to_string()
+        }
     }
 }
 
@@ -127,7 +184,7 @@ pub async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, 
     // A custom error
     } else if let Some(app_err) = err.find::<AppError>() {
         code = app_err.to_http_status();
-        message = app_err.message.to_string();
+        message = app_err.message.clone();
 
     // "Invalid Body" error
     } else if err.find::<warp::filters::body::BodyDeserializeError>().is_some() {

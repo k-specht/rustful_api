@@ -16,6 +16,6 @@ tokio = { version = "^1", features = ["full"] }
 warp = "^0.3"
 sqlx = { version = "^0.6", features = [ "runtime-tokio-rustls" ] }
 rustract = { git = "https://github.com/k-specht/rustract", rev = "4ddec06" }
-lazy_static = "*"
+lazy_static = "^1.4.0"
 serde = { version = "^1.0.104", features = ["derive"] }
 serde_json = "^1.0.48"
